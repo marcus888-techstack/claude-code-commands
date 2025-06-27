@@ -1,74 +1,100 @@
+# Git Worktrees Cleanup
+
+## Purpose
 Clean up worktrees for merged branches
 
+## Context
+Use to automatically remove worktrees whose branches have been merged to main or develop. Helps maintain a clean workspace by removing completed work. Includes safety checks for uncommitted changes and option to filter by branch pattern.
+
+## Parameters
+- `$ARGUMENTS` - Optional branch pattern filter
+  - Optional
+  - Example: `feature/` to cleanup only feature worktrees
+
+## Steps
+
+### 1. List all worktrees
 ```bash
-# Optional filter from arguments
-FILTER=$ARGUMENTS
-
-echo "=== Worktree Cleanup ==="
-echo ""
-
-# Get list of worktrees
-WORKTREES=$(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2)
-CLEANED=0
-SKIPPED=0
-
-for WORKTREE in $WORKTREES; do
-    # Skip main worktree
-    if git -C "$WORKTREE" symbolic-ref --short HEAD >/dev/null 2>&1; then
-        BRANCH=$(git -C "$WORKTREE" symbolic-ref --short HEAD)
-        
-        # Skip main and develop branches
-        if [[ "$BRANCH" = "main" ]] || [[ "$BRANCH" = "develop" ]]; then
-            continue
-        fi
-        
-        # Apply filter if provided
-        if [ ! -z "$FILTER" ] && [[ ! "$BRANCH" =~ $FILTER ]]; then
-            continue
-        fi
-        
-        # Check if branch is merged to develop or main
-        MERGED_DEVELOP=$(git branch --merged develop | grep -c "^  $BRANCH$" || echo 0)
-        MERGED_MAIN=$(git branch --merged main | grep -c "^  $BRANCH$" || echo 0)
-        
-        if [ $MERGED_DEVELOP -gt 0 ] || [ $MERGED_MAIN -gt 0 ]; then
-            echo "Cleaning up merged worktree: $WORKTREE ($BRANCH)"
-            
-            # Check for uncommitted changes
-            if [ -z "$(git -C "$WORKTREE" status --porcelain)" ]; then
-                git worktree remove "$WORKTREE"
-                
-                # Delete the branch
-                git branch -d "$BRANCH" 2>/dev/null
-                git push origin --delete "$BRANCH" 2>/dev/null
-                
-                CLEANED=$((CLEANED + 1))
-                echo "✓ Removed worktree and deleted branch: $BRANCH"
-            else
-                echo "⚠️  Skipped: $WORKTREE has uncommitted changes"
-                SKIPPED=$((SKIPPED + 1))
-            fi
-        fi
-    fi
-done
-
-# Prune any stale worktree entries
-git worktree prune
-
-echo ""
-echo "=== Cleanup Summary ==="
-echo "Cleaned: $CLEANED worktrees"
-echo "Skipped: $SKIPPED worktrees (uncommitted changes)"
-
-# Show remaining worktrees
-echo ""
-echo "Remaining worktrees:"
-git worktree list
-
-# Suggest next steps
-if [ $SKIPPED -gt 0 ]; then
-    echo ""
-    echo "To force cleanup skipped worktrees:"
-    echo "git worktree remove --force <worktree-path>"
-fi
+git worktree list --porcelain
 ```
+Gets comprehensive worktree information.
+
+### 2. Skip permanent branches
+Excludes main and develop worktrees from cleanup.
+
+### 3. Apply optional filter
+If provided, only processes worktrees matching the pattern.
+
+### 4. Check merge status
+```bash
+git branch --merged develop
+git branch --merged main
+```
+Determines if branch has been integrated.
+
+### 5. Verify uncommitted changes
+```bash
+git -C "$WORKTREE" status --porcelain
+```
+Prevents loss of uncommitted work.
+
+### 6. Remove merged worktrees
+```bash
+git worktree remove "$WORKTREE"
+```
+Removes worktree directory and metadata.
+
+### 7. Delete merged branches
+```bash
+git branch -d "$BRANCH"
+git push origin --delete "$BRANCH"
+```
+Cleans up local and remote branches.
+
+### 8. Prune stale entries
+```bash
+git worktree prune
+```
+Removes references to deleted worktrees.
+
+### 9. Display summary
+Shows cleanup statistics and remaining worktrees.
+
+## Validation
+- Only merged branches are removed
+- Uncommitted changes are preserved
+- Worktree removal is successful
+- Branch deletion completes
+- Stale entries are pruned
+
+## Error Handling
+- **"has uncommitted changes"** - Skips worktree with unsaved work
+- **"not merged"** - Branch not integrated to main/develop
+- **"failed to remove"** - Permission or access issues
+- **Remote deletion fails** - Remote branch may be protected
+
+## Safety Notes
+- Never removes main or develop worktrees
+- Checks for uncommitted changes before removal
+- Only deletes merged branches
+- Remote deletion may fail silently
+- Use --force flag cautiously
+
+## Examples
+- **Clean all merged worktrees**
+  ```
+  git-worktrees-cleanup
+  ```
+  Removes all merged feature/hotfix worktrees
+
+- **Clean only feature worktrees**
+  ```
+  git-worktrees-cleanup feature/
+  ```
+  Targets feature branches only
+
+- **Clean release worktrees**
+  ```
+  git-worktrees-cleanup release/
+  ```
+  Removes completed release worktrees

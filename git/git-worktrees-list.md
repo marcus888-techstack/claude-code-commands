@@ -1,62 +1,78 @@
+# Git Worktrees List
+
+## Purpose
 List all Git worktrees with enhanced information
 
+## Context
+Use to see all active worktrees in your repository. Shows paths, branches, disk usage, and identifies stale worktrees. Essential for managing multiple parallel development efforts and cleaning up unused worktrees.
+
+## Parameters
+- `$ARGUMENTS` - Optional filter pattern
+  - Optional
+  - Example: `feature/` to show only feature worktrees
+
+## Steps
+
+### 1. Display worktree details
 ```bash
-# Optional filter from arguments
-FILTER=$ARGUMENTS
-
-echo "=== Git Worktrees ==="
-echo ""
-
-# Get worktree information
-if [ -z "$FILTER" ]; then
-    # Full listing
-    git worktree list --porcelain | awk '
-        /^worktree/ {path=$2}
-        /^HEAD/ {head=$2}
-        /^branch/ {branch=$2; gsub("refs/heads/", "", branch)}
-        /^$/ {
-            if (path && head) {
-                # Get relative path if possible
-                gsub(/.*\//, "", shortpath)
-                printf "%-30s %-25s %s\n", path, branch ? branch : "(detached)", substr(head, 1, 7)
-            }
-            path=""; head=""; branch=""
-        }
-    ' | column -t
-else
-    # Filtered listing
-    git worktree list | grep "$FILTER"
-fi
-
-# Summary statistics
-echo ""
-echo "=== Summary ==="
-TOTAL=$(git worktree list | wc -l)
-FEATURES=$(git worktree list | grep -c "feature/" || echo 0)
-HOTFIXES=$(git worktree list | grep -c "hotfix/" || echo 0)
-
-echo "Total worktrees: $TOTAL"
-echo "- Main/Develop: $((TOTAL - FEATURES - HOTFIXES))"
-echo "- Features: $FEATURES"
-echo "- Hotfixes: $HOTFIXES"
-
-# Check for stale worktrees
-STALE=$(git worktree list --porcelain | grep -B2 "prunable" | grep "^worktree" | wc -l)
-if [ $STALE -gt 0 ]; then
-    echo ""
-    echo "⚠️  Found $STALE stale worktree(s)"
-    echo "Run 'git worktree prune' to clean up"
-fi
-
-# Disk usage
-if command -v du &> /dev/null; then
-    echo ""
-    echo "=== Disk Usage ==="
-    for worktree in $(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2); do
-        if [ -d "$worktree" ]; then
-            SIZE=$(du -sh "$worktree" 2>/dev/null | cut -f1)
-            echo "$worktree: $SIZE"
-        fi
-    done
-fi
+git worktree list --porcelain
 ```
+Parses and formats worktree information including:
+- Path to worktree
+- Associated branch (or detached state)
+- HEAD commit hash
+
+### 2. Apply optional filter
+If filter provided, shows only matching worktrees.
+
+### 3. Generate summary statistics
+Counts worktrees by type:
+- Total worktrees
+- Main/Develop branches
+- Feature branches
+- Hotfix branches
+
+### 4. Check for stale worktrees
+```bash
+git worktree list --porcelain | grep -B2 "prunable"
+```
+Identifies worktrees that can be cleaned up.
+
+### 5. Calculate disk usage
+For each worktree, shows disk space used (if `du` command available).
+
+## Validation
+- All active worktrees are listed
+- Paths are accessible
+- Branch associations are correct
+- Disk usage is calculated
+
+## Error Handling
+- **"not a git repository"** - Not in a git directory
+- **"no worktrees found"** - No worktrees configured
+- **Permission errors** - Can't access worktree directories
+
+## Safety Notes
+- This is a read-only operation
+- Safe to run anytime
+- Identifies but doesn't remove stale worktrees
+- Disk usage may take time for large repos
+
+## Examples
+- **List all worktrees**
+  ```
+  git-worktrees-list
+  ```
+  Shows comprehensive worktree information
+
+- **Filter feature worktrees**
+  ```
+  git-worktrees-list feature/
+  ```
+  Shows only feature branch worktrees
+
+- **Check disk usage**
+  ```
+  git-worktrees-list
+  ```
+  Includes size information for each worktree

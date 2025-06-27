@@ -1,94 +1,74 @@
+# Git Workflow Sync
+
+## Purpose
 Synchronize branches after tag-based releases or hotfixes
 
-```bash
-# Determine sync type from arguments
-SYNC_TYPE=$ARGUMENTS
+## Context
+Use to keep develop and main branches in sync after releases or hotfixes. This ensures develop includes all production changes and prevents divergence between branches. Critical for maintaining a clean git-flow.
 
-if [ -z "$SYNC_TYPE" ]; then
-    echo "Usage: /git:workflow:sync release|hotfix|status"
-    echo ""
-    echo "Options:"
-    echo "  release - Sync develop after a release tag"
-    echo "  hotfix  - Sync develop after a hotfix"
-    echo "  status  - Show sync status between branches"
-    exit 1
-fi
+## Parameters
+- `$ARGUMENTS` - Sync operation type
+  - Required
+  - Options: `release`, `hotfix`, or `status`
+  - Example: `release`
 
-if [ "$SYNC_TYPE" = "status" ]; then
-    # Show sync status
-    echo "=== Branch Synchronization Status ==="
-    echo ""
-    
-    MAIN_VERSION=$(git describe --tags --abbrev=0 main 2>/dev/null || echo "none")
-    DEVELOP_VERSION=$(git describe --tags --abbrev=0 develop 2>/dev/null || echo "none")
-    
-    echo "Main version: $MAIN_VERSION"
-    echo "Develop version: $DEVELOP_VERSION"
-    echo ""
-    
-    # Check divergence
-    AHEAD=$(git rev-list --count main..develop)
-    BEHIND=$(git rev-list --count develop..main)
-    
-    echo "Develop is $AHEAD commits ahead of main"
-    echo "Develop is $BEHIND commits behind main"
-    
-    if [ $BEHIND -gt 0 ]; then
-        echo ""
-        echo "⚠️  Develop needs to be synchronized with main"
-        echo "Run: /git:workflow:sync release"
-    else
-        echo ""
-        echo "✓ Branches are synchronized"
-    fi
-    
-elif [ "$SYNC_TYPE" = "release" ]; then
-    # After release: sync develop with main
-    echo "Synchronizing develop with main after release..."
-    
-    git checkout main
-    git pull origin main
-    MAIN_VERSION=$(git describe --tags --abbrev=0)
-    
-    git checkout develop
-    git pull origin develop
-    
-    # Only merge if needed
-    if ! git merge-base --is-ancestor main develop; then
-        git merge main --no-ff -m "Sync: develop aligned with release $MAIN_VERSION"
-        git push origin develop
-    fi
-    
-    # Create dev tag for the release version
-    DEV_TAG="${MAIN_VERSION}_dev"
-    if ! git rev-parse "$DEV_TAG" >/dev/null 2>&1; then
-        git tag -a "$DEV_TAG" -m "Development continues from $MAIN_VERSION"
-        git push origin "$DEV_TAG"
-    fi
-    
-    echo "✓ Develop synchronized with main at $MAIN_VERSION"
-    
-elif [ "$SYNC_TYPE" = "hotfix" ]; then
-    # After hotfix: ensure both branches have the fix
-    echo "Synchronizing develop with hotfix from main..."
-    
-    HOTFIX_VERSION=$(git describe --tags --abbrev=0 main)
-    
-    git checkout develop
-    git pull origin develop
-    git merge main --no-ff -m "Sync: hotfix $HOTFIX_VERSION applied to develop"
-    git push origin develop
-    
-    # Tag develop with hotfix version
-    DEV_TAG="${HOTFIX_VERSION}_dev"
-    if ! git rev-parse "$DEV_TAG" >/dev/null 2>&1; then
-        git tag -a "$DEV_TAG" -m "Hotfix $HOTFIX_VERSION synchronized"
-        git push origin "$DEV_TAG"
-    fi
-    
-    echo "✓ Hotfix $HOTFIX_VERSION synchronized to develop"
-else
-    echo "Error: Unknown sync type '$SYNC_TYPE'"
-    echo "Use: release, hotfix, or status"
-fi
-```
+## Steps
+
+### 1. Status check operation
+If `status` is specified:
+- Shows current versions on both branches
+- Calculates commits ahead/behind
+- Recommends sync if needed
+
+### 2. Release sync operation
+If `release` is specified:
+- Updates both main and develop
+- Merges main into develop if needed
+- Creates development tag for the release version
+- Ensures develop has all release changes
+
+### 3. Hotfix sync operation
+If `hotfix` is specified:
+- Merges hotfix from main into develop
+- Creates development tag for hotfix version
+- Ensures critical fixes are in both branches
+
+### 4. Validation and confirmation
+Shows sync results and current branch state.
+
+## Validation
+- Branches are properly synchronized
+- Development tags are created
+- No divergence between branches
+- Merge commits preserve history
+
+## Error Handling
+- **"Unknown sync type"** - Use release, hotfix, or status
+- **"Merge conflicts"** - Resolve manually then commit
+- **"Branch not found"** - Ensure main and develop exist
+- **"Already synchronized"** - No action needed
+
+## Safety Notes
+- Always sync after releases and hotfixes
+- Resolve conflicts carefully
+- Test after synchronization
+- Maintains branch history with --no-ff
+
+## Examples
+- **Check sync status**
+  ```
+  git-workflow-sync status
+  ```
+  Shows if branches need synchronization
+
+- **After a release**
+  ```
+  git-workflow-sync release
+  ```
+  Syncs develop with the released version
+
+- **After a hotfix**
+  ```
+  git-workflow-sync hotfix
+  ```
+  Ensures hotfix is in develop branch

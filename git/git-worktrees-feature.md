@@ -1,71 +1,87 @@
+# Git Worktrees Feature
+
+## Purpose
 Create a feature branch worktree
 
+## Context
+Use to start a new feature development in a separate worktree. Creates a feature branch from develop and sets up a dedicated workspace. Includes feature tracking file and ensures you're working from the latest develop branch.
+
+## Parameters
+- `$ARGUMENTS` - Feature name
+  - Required
+  - Example: `user-auth`, `payment-integration`, `issue-123-fix-login`
+
+## Steps
+
+### 1. Validate feature name
+Ensures a feature name is provided.
+
+### 2. Update develop branch
 ```bash
-# Parse feature name from arguments
-FEATURE_NAME=$ARGUMENTS
-
-if [ -z "$FEATURE_NAME" ]; then
-    echo "Usage: /git/worktrees/feature <feature-name>"
-    echo ""
-    echo "Examples:"
-    echo "  /git/worktrees/feature user-auth"
-    echo "  /git/worktrees/feature payment-integration"
-    echo "  /git/worktrees/feature issue-123-fix-login"
-    exit 1
-fi
-
-# Ensure we're starting from develop
-git checkout develop > /dev/null 2>&1
-git pull origin develop > /dev/null 2>&1
-
-# Create branch name
-BRANCH_NAME="feature/$FEATURE_NAME"
-WORKTREE_PATH="../features/$FEATURE_NAME"
-
-# Check if branch already exists
-if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
-    echo "Branch '$BRANCH_NAME' already exists"
-    echo "Creating worktree from existing branch..."
-    git worktree add "$WORKTREE_PATH" "$BRANCH_NAME"
-else
-    echo "Creating new feature branch: $BRANCH_NAME"
-    git worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH"
-fi
-
-# Set up feature worktree
-cd "$WORKTREE_PATH"
-
-# Create feature-specific files if needed
-if [ ! -f ".feature-info" ]; then
-    cat > .feature-info << EOF
-Feature: $FEATURE_NAME
-Branch: $BRANCH_NAME
-Created: $(date)
-Author: $(git config user.name)
-
-Description:
-TODO: Add feature description here
-
-Tasks:
-[ ] Implement core functionality
-[ ] Write tests
-[ ] Update documentation
-[ ] Code review
-EOF
-    echo "✓ Created .feature-info file"
-fi
-
-echo ""
-echo "=== Feature Worktree Created ==="
-echo "Path: $(pwd)"
-echo "Branch: $BRANCH_NAME"
-echo ""
-echo "Next steps:"
-echo "1. cd $WORKTREE_PATH"
-echo "2. Edit .feature-info with feature details"
-echo "3. Start development"
-echo "4. When done: /git/feature/finish $FEATURE_NAME"
-
-# Return to original directory
-cd - > /dev/null
+git checkout develop
+git pull origin develop
 ```
+Ensures feature starts from latest code.
+
+### 3. Create branch name
+Formats as `feature/<feature-name>`.
+
+### 4A. Use existing branch
+```bash
+git worktree add "$WORKTREE_PATH" "$BRANCH_NAME"
+```
+If branch exists, creates worktree from it.
+
+### 4B. Create new branch
+```bash
+git worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH"
+```
+Creates new feature branch with worktree.
+
+### 5. Set up feature workspace
+Creates `.feature-info` file with:
+- Feature name and branch
+- Creation date and author
+- Task checklist template
+
+### 6. Display next steps
+Guides user on how to proceed with development.
+
+## Validation
+- Feature name is provided
+- Develop branch is up to date
+- Worktree is created successfully
+- Feature branch is properly linked
+- Feature info file is created
+
+## Error Handling
+- **"Usage: /git/worktrees/feature"** - Missing feature name
+- **"Branch already exists"** - Uses existing branch
+- **"failed to create worktree"** - Path or permission issues
+- **"failed to pull"** - Network or authentication issues
+
+## Safety Notes
+- Always starts from latest develop
+- Preserves existing branches
+- Creates organized directory structure
+- Feature info helps track progress
+- Separate workspace prevents conflicts
+
+## Examples
+- **Start new authentication feature**
+  ```
+  git-worktrees-feature user-auth
+  ```
+  Creates feature/user-auth branch and worktree
+
+- **Work on issue fix**
+  ```
+  git-worktrees-feature issue-123-fix-login
+  ```
+  Creates descriptive feature branch
+
+- **Continue existing feature**
+  ```
+  git-worktrees-feature payment-integration
+  ```
+  Creates worktree for existing feature branch

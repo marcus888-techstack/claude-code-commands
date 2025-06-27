@@ -1,89 +1,73 @@
+# Git Release Tag
+
+## Purpose
 Create a release using tags (modern workflow without release branches)
 
-```bash
-# Parse version from arguments
-VERSION=$ARGUMENTS
+## Context
+Use to create a new release version. This modern workflow uses tags instead of release branches, simplifying the release process. Can be run from either develop (pre-release) or main (post-release) branch.
 
-if [ -z "$VERSION" ]; then
-    echo "Error: Please specify version"
-    echo "Usage: /git/release/tag v1.2.0"
-    exit 1
-fi
+## Parameters
+- `$ARGUMENTS` - Version number for the release
+  - Required
+  - Example: `v1.2.0` or `1.2.0` (v prefix added automatically)
 
-# Ensure version format
-if [[ ! "$VERSION" =~ ^v ]]; then
-    VERSION="v$VERSION"
-fi
+## Steps
 
-# Current branch check
-CURRENT_BRANCH=$(git branch --show-current)
+### 1. Validate version input
+Ensures version is provided and adds 'v' prefix if missing.
 
-echo "=== Tag-Based Release: $VERSION ==="
-echo ""
+### 2. Check current branch
+Determines workflow based on whether you're on develop or main.
 
-# Option 1: Tag from develop and merge to main
-if [ "$CURRENT_BRANCH" = "develop" ]; then
-    # Ensure develop is up to date
-    git pull origin develop
-    
-    # Run tests (customize as needed)
-    echo "Running tests..."
-    # npm test || yarn test || make test
-    
-    # Create release tag
-    git tag -a "$VERSION" -m "Release $VERSION"
-    echo "✓ Tagged develop with $VERSION"
-    
-    # Push tag
-    git push origin "$VERSION"
-    echo "✓ Pushed tag to origin"
-    
-    # Merge to main
-    echo ""
-    echo "Merging to main..."
-    git checkout main
-    git pull origin main
-    git merge develop --no-ff -m "Release $VERSION"
-    git push origin main
-    echo "✓ Merged to main"
-    
-    # Update develop version
-    git checkout develop
-    git tag -a "${VERSION}_dev" -m "Development continues from $VERSION"
-    git push origin "${VERSION}_dev"
-    echo "✓ Tagged develop as ${VERSION}_dev"
-    
-# Option 2: Tag directly from main
-elif [ "$CURRENT_BRANCH" = "main" ]; then
-    # Ensure main is up to date
-    git pull origin main
-    
-    # Create release tag
-    git tag -a "$VERSION" -m "Release $VERSION"
-    git push origin "$VERSION"
-    echo "✓ Tagged main with $VERSION"
-    
-    # Sync develop
-    git checkout develop
-    git pull origin develop
-    git merge main --no-ff -m "Sync with release $VERSION"
-    git tag -a "${VERSION}_dev" -m "Development synchronized with $VERSION"
-    git push origin develop
-    git push origin "${VERSION}_dev"
-    echo "✓ Synchronized develop"
-else
-    echo "Error: Must be on 'develop' or 'main' branch"
-    echo "Current branch: $CURRENT_BRANCH"
-    exit 1
-fi
+### 3A. Release from develop branch
+- Pull latest develop changes
+- Run tests (customizable)
+- Create release tag: `git tag -a "$VERSION" -m "Release $VERSION"`
+- Push tag to origin
+- Merge to main with --no-ff
+- Push main branch
+- Tag develop as `${VERSION}_dev` for continued development
 
-echo ""
-echo "=== Release Complete ==="
-echo "Version: $VERSION"
-echo "Deploy using: git checkout $VERSION"
-echo ""
-echo "Next steps:"
-echo "1. Deploy from tag: $VERSION"
-echo "2. Create release notes"
-echo "3. Notify team"
-```
+### 3B. Release from main branch
+- Pull latest main changes
+- Create release tag on main
+- Push tag to origin
+- Sync develop with main
+- Tag develop as `${VERSION}_dev`
+
+### 4. Complete release
+Shows summary and next steps for deployment.
+
+## Validation
+- Release tag is created and pushed
+- Main branch has the release
+- Develop is synchronized
+- Development version tag exists
+
+## Error Handling
+- **"Please specify version"** - Version number required
+- **"Must be on 'develop' or 'main' branch"** - Switch to correct branch
+- **Test failures** - Fix issues before releasing
+- **Tag already exists** - Use different version number
+
+## Safety Notes
+- Run tests before creating release
+- Ensure CI/CD passes
+- Review changes in the release
+- Plan deployment immediately after tagging
+- Keep release notes updated
+
+## Examples
+- **Release from develop**
+  ```
+  git checkout develop
+  git-release-tag v1.2.0
+  ```
+  Creates release and merges to main
+
+- **Hotfix release from main**
+  ```
+  git checkout main
+  git-release-tag v1.2.1
+  ```
+  Tags main and syncs with develop

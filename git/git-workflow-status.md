@@ -1,36 +1,84 @@
+# Git Workflow Status
+
+## Purpose
 Show comprehensive workflow status including branches, versions, and pending work
 
+## Context
+Use to get a complete overview of your repository's git-flow status. Shows current branch, latest versions, active feature/hotfix branches, uncommitted changes, and recent activity. Essential for understanding project state.
+
+## Parameters
+- None required
+
+## Steps
+
+### 1. Show current branch
 ```bash
-echo "=== Git Workflow Status ==="
-echo ""
-
-# Current branch
-echo "Current Branch:"
 git branch --show-current
-echo ""
+```
+Displays which branch you're currently on.
 
-# Latest versions
-echo "Latest Versions:"
+### 2. Display latest versions
+```bash
 echo "Main: $(git describe --tags --abbrev=0 main 2>/dev/null || echo 'No tags')"
 echo "Develop: $(git describe --tags --abbrev=0 develop 2>/dev/null || echo 'No tags')"
-echo ""
+```
+Shows the most recent tags on main branches.
 
-# Active branches
-echo "Active Branches:"
+### 3. List active branches
+```bash
 git branch -a | grep -E "(feature/|release/|hotfix/)" | sed 's/remotes\/origin\///'
-echo ""
+```
+Finds all feature, release, and hotfix branches.
 
-# Uncommitted changes
-echo "Working Directory:"
+### 4. Check working directory
+```bash
 git status -s || echo "✓ Clean"
-echo ""
+```
+Shows uncommitted changes or confirms clean state.
 
-# Pending merges
-echo "Branches ready to merge:"
-git branch --no-merged develop | grep -E "(feature/)" || echo "None"
-echo ""
+### 5. Find branches ready to merge
+```bash
+git branch --no-merged develop | grep -E "(feature/)"
+```
+Lists feature branches not yet merged to develop.
 
-# Recent commits
-echo "Recent Activity:"
+### 6. Show recent activity
+```bash
 git log --oneline --graph --decorate -10
 ```
+Displays the last 10 commits with branch visualization.
+
+## Validation
+- All sections display correctly
+- Version tags are found if they exist
+- Active branches are listed
+- Working directory status is accurate
+
+## Error Handling
+- **"No tags"** - Repository has no version tags yet
+- **"No branches found"** - No active feature/hotfix branches
+- **"fatal: branch does not exist"** - Missing main or develop branch
+
+## Safety Notes
+- This is a read-only operation
+- Safe to run anytime
+- No changes are made to repository
+
+## Examples
+- **Check workflow status**
+  ```
+  git-workflow-status
+  ```
+  Shows complete repository workflow state
+
+- **Before starting new work**
+  ```
+  git-workflow-status
+  ```
+  Helps decide what to work on next
+
+- **During team standup**
+  ```
+  git-workflow-status
+  ```
+  Provides overview for discussion

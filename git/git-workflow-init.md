@@ -1,48 +1,81 @@
-Initialize Git workflow with main and develop branches (simplified for tag-based releases)
+# Git Workflow Init
 
+## Purpose
+Initialize Git workflow with main and develop branches
+
+## Context
+Use to set up a repository with the git-flow branching model. Creates the necessary branches, sets protection, and establishes initial versioning. This simplified workflow uses tags instead of release branches.
+
+## Parameters
+- None required
+
+## Steps
+
+### 1. Ensure on main branch
 ```bash
-# Ensure we're on main branch
 git checkout main
 git pull origin main
+```
+Starts from the production branch.
 
-# Create develop branch if it doesn't exist
+### 2. Create develop branch (if needed)
+```bash
 if ! git show-ref --verify --quiet refs/heads/develop; then
     git checkout -b develop
     git push -u origin develop
-    echo "✓ Created develop branch"
-else
-    echo "✓ Develop branch already exists"
 fi
+```
+Creates the integration branch for features.
 
-# Set branch protection
+### 3. Set branch protection
+```bash
 git config --global branch.main.protect true
 git config --global branch.develop.protect true
+```
+Marks branches as protected in local config.
 
-# Create initial version tag if no tags exist
+### 4. Create initial version tag (if needed)
+```bash
 if [ -z "$(git tag -l)" ]; then
     git tag -a "v0.1.0" -m "Initial release"
     git push origin v0.1.0
     
-    # Tag develop branch
     git checkout develop
     git tag -a "v0.1.0_dev" -m "Development starts from v0.1.0"
     git push origin v0.1.0_dev
-    
-    echo "✓ Created initial version: v0.1.0"
-else
-    echo "✓ Tags already exist"
 fi
-
-echo ""
-echo "=== Git Workflow Initialized ==="
-echo "✓ Main branch: Production-ready code"
-echo "✓ Develop branch: Integration branch"
-echo "✓ Branch protection: Enabled"
-echo ""
-echo "Workflow:"
-echo "1. Features: Branch from develop"
-echo "2. Releases: Tag from develop, merge to main"
-echo "3. Hotfixes: Branch from main, merge to both"
-echo ""
-echo "No release branches needed - use tags instead!"
 ```
+Establishes initial versioning for both branches.
+
+### 5. Display workflow summary
+Shows the initialized structure and workflow guidelines.
+
+## Validation
+- Main and develop branches exist
+- Both branches have protection config
+- Initial tags are created
+- Remote tracking is set up
+
+## Error Handling
+- **Branch already exists** - Skips creation, continues setup
+- **No remote 'origin'** - Ensure remote is configured
+- **Permission denied** - Check repository permissions
+
+## Safety Notes
+- Run only once per repository
+- Ensure you have push permissions
+- Team should agree on workflow before initialization
+- Consider existing branches before running
+
+## Examples
+- **Initialize new repository**
+  ```
+  git-workflow-init
+  ```
+  Sets up complete git-flow structure
+
+- **After cloning repository**
+  ```
+  git-workflow-init
+  ```
+  Ensures all workflow branches exist locally

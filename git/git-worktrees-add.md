@@ -1,49 +1,75 @@
+# Git Worktrees Add
+
+## Purpose
 Add a new Git worktree
 
+## Context
+Use to work on multiple branches simultaneously without switching. Worktrees create separate working directories for different branches, allowing parallel development. Ideal for bug fixes while working on features, or comparing implementations.
+
+## Parameters
+- `$ARGUMENTS` - Path and branch specification
+  - Format: `<path> <branch>` or `<path> -b <new-branch>`
+  - Example: `../features/oauth feature/oauth`
+
+## Steps
+
+### 1. Parse arguments
+Extracts path and branch information from arguments.
+
+### 2A. Create worktree with new branch
 ```bash
-# Parse arguments: "path branch" or "path -b new-branch"
-ARGS=$ARGUMENTS
-PATH_ARG=$(echo $ARGS | awk '{print $1}')
-BRANCH_ARGS=$(echo $ARGS | cut -d' ' -f2-)
-
-if [ -z "$PATH_ARG" ]; then
-    echo "Usage: /git/worktrees/add <path> <branch>"
-    echo "       /git/worktrees/add <path> -b <new-branch>"
-    echo ""
-    echo "Examples:"
-    echo "  /git/worktrees/add ../features/oauth feature/oauth"
-    echo "  /git/worktrees/add ../features/payment -b feature/payment"
-    exit 1
-fi
-
-# Determine if creating new branch
-if [[ "$BRANCH_ARGS" =~ ^-b ]]; then
-    # Creating new branch
-    BRANCH_NAME=$(echo $BRANCH_ARGS | sed 's/-b //')
-    git worktree add -b "$BRANCH_NAME" "$PATH_ARG"
-    echo "✓ Created worktree at $PATH_ARG with new branch: $BRANCH_NAME"
-else
-    # Using existing branch
-    BRANCH_NAME=$BRANCH_ARGS
-    if [ -z "$BRANCH_NAME" ]; then
-        echo "Error: Please specify branch name"
-        exit 1
-    fi
-    git worktree add "$PATH_ARG" "$BRANCH_NAME"
-    echo "✓ Created worktree at $PATH_ARG for branch: $BRANCH_NAME"
-fi
-
-# Show worktree info
-echo ""
-echo "Worktree details:"
-echo "- Path: $(cd "$PATH_ARG" && pwd)"
-echo "- Branch: $BRANCH_NAME"
-echo "- Status: Active"
-
-# Provide next steps
-echo ""
-echo "Next steps:"
-echo "1. cd $PATH_ARG"
-echo "2. Start development"
-echo "3. Remove when done: git worktree remove $PATH_ARG"
+git worktree add -b "$BRANCH_NAME" "$PATH_ARG"
 ```
+Creates new branch and worktree simultaneously.
+
+### 2B. Create worktree for existing branch
+```bash
+git worktree add "$PATH_ARG" "$BRANCH_NAME"
+```
+Links existing branch to new worktree.
+
+### 3. Display worktree information
+Shows:
+- Full path to worktree
+- Associated branch name
+- Active status
+
+### 4. Provide next steps
+Guides user on how to use the new worktree.
+
+## Validation
+- Worktree directory is created
+- Branch is properly linked
+- Can navigate to worktree
+- Git commands work in new location
+
+## Error Handling
+- **"branch already exists"** - Branch name is taken
+- **"already exists"** - Path is already used
+- **"not a valid directory"** - Parent directory missing
+- **"branch is already checked out"** - Branch in use elsewhere
+
+## Safety Notes
+- Each branch can only have one worktree
+- Worktrees share the same repository
+- Changes are immediately visible across worktrees
+- Clean up worktrees when done to save space
+
+## Examples
+- **Add worktree for existing branch**
+  ```
+  git-worktrees-add ../features/oauth feature/oauth
+  ```
+  Creates worktree for oauth feature
+
+- **Create new branch with worktree**
+  ```
+  git-worktrees-add ../features/payment -b feature/payment
+  ```
+  Creates both branch and worktree
+
+- **Hotfix while developing**
+  ```
+  git-worktrees-add ../hotfix/urgent hotfix/security-fix
+  ```
+  Work on hotfix without interrupting feature

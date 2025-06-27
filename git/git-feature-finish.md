@@ -1,71 +1,90 @@
+# Git Feature Finish
+
+## Purpose
 Complete feature and merge to develop with automatic version tagging
 
+## Context
+Use when a feature is complete and ready to be integrated into develop. This command merges the feature branch, creates a development version tag, and cleans up the branch. Follows git-flow conventions.
+
+## Parameters
+- `$ARGUMENTS` - Name of the feature to finish (without feature/ prefix)
+  - Required
+  - Example: `user-authentication`
+
+## Steps
+
+### 1. Validate inputs
+Check that feature name is provided and the feature branch exists.
+
+### 2. Update develop branch
 ```bash
-# Get feature name from arguments
-FEATURE_NAME=$ARGUMENTS
-
-if [ -z "$FEATURE_NAME" ]; then
-    echo "Usage: /git:feature:finish <feature-name>"
-    exit 1
-fi
-
-BRANCH_NAME="feature/$FEATURE_NAME"
-
-# Verify feature branch exists
-if ! git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
-    echo "Error: Branch '$BRANCH_NAME' not found"
-    exit 1
-fi
-
-# Switch to develop and update
 git checkout develop
 git pull origin develop
+```
+Ensures develop has the latest changes before merging.
 
-# Get current develop version for auto-tagging
-CURRENT_VERSION=$(git describe --tags --abbrev=0 develop 2>/dev/null | sed 's/_dev$//')
-if [ -z "$CURRENT_VERSION" ]; then
-    echo "Warning: No version tags found on develop"
-    CURRENT_VERSION="v0.0.0"
-fi
+### 3. Determine new version
+- Get current version from develop branch tags
+- Parse version components (major.minor.patch)
+- Increment patch version
+- Add _dev suffix for development version
 
-# Parse and increment patch version
-MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1 | sed 's/v//')
-MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
-PATCH=$(echo $CURRENT_VERSION | cut -d. -f3)
-NEW_PATCH=$((PATCH + 1))
-NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}_dev"
-
-# Merge feature branch
-echo "Merging $BRANCH_NAME into develop..."
-git merge --no-ff "$BRANCH_NAME" -m "Merge $BRANCH_NAME into develop
+### 4. Merge feature branch
+```bash
+git merge --no-ff feature/$FEATURE_NAME -m "Merge feature/$FEATURE_NAME into develop
 
 Feature: $FEATURE_NAME completed"
-
-if [ $? -eq 0 ]; then
-    # Push develop
-    git push origin develop
-    
-    # Create development version tag
-    git tag -a "$NEW_VERSION" -m "Feature merged: $FEATURE_NAME"
-    git push origin "$NEW_VERSION"
-    
-    # Delete feature branch
-    git branch -d "$BRANCH_NAME"
-    git push origin --delete "$BRANCH_NAME"
-    
-    # Remove worktree if exists
-    WORKTREE_PATH="../features/$FEATURE_NAME"
-    if [ -d "$WORKTREE_PATH" ]; then
-        git worktree remove "$WORKTREE_PATH" 2>/dev/null || true
-    fi
-    
-    echo ""
-    echo "✓ Feature '$FEATURE_NAME' completed successfully"
-    echo "✓ Merged to develop"
-    echo "✓ Tagged as $NEW_VERSION"
-    echo "✓ Branch cleaned up"
-else
-    echo "Error: Merge failed. Resolve conflicts and try again."
-    exit 1
-fi
 ```
+Uses --no-ff to preserve feature branch history.
+
+### 5. Push changes and tag
+```bash
+git push origin develop
+git tag -a "v{MAJOR}.{MINOR}.{PATCH}_dev" -m "Feature merged: $FEATURE_NAME"
+git push origin "v{MAJOR}.{MINOR}.{PATCH}_dev"
+```
+Pushes the merge and creates a development version tag.
+
+### 6. Clean up branches
+```bash
+git branch -d feature/$FEATURE_NAME
+git push origin --delete feature/$FEATURE_NAME
+```
+Removes local and remote feature branches.
+
+### 7. Remove worktree (if exists)
+```bash
+git worktree remove ../features/$FEATURE_NAME
+```
+Cleans up any associated worktree.
+
+## Validation
+- Feature branch is merged into develop
+- New development version tag is created
+- Feature branch is deleted locally and remotely
+- No merge conflicts remain
+
+## Error Handling
+- **"Branch 'feature/X' not found"** - Feature branch doesn't exist
+- **"No version tags found on develop"** - Uses v0.0.0 as starting version
+- **"Merge failed"** - Resolve conflicts manually, then retry
+- **"Cannot delete branch"** - Branch might not be fully merged
+
+## Safety Notes
+- Always test feature thoroughly before finishing
+- Ensure CI/CD passes on feature branch
+- Communicate with team before merging large features
+- The --no-ff flag preserves feature history
+
+## Examples
+- **Finish a user authentication feature**
+  ```
+  git-feature-finish user-authentication
+  ```
+  Merges feature/user-authentication to develop and tags it
+
+- **Finish a payment feature**
+  ```
+  git-feature-finish payment-integration
+  ```
+  Completes the payment integration feature

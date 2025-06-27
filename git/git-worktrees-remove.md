@@ -1,87 +1,82 @@
+# Git Worktrees Remove
+
+## Purpose
 Remove a Git worktree safely
 
+## Context
+Use to clean up worktrees when done with parallel development. Checks for uncommitted changes and unmerged branches before removal. Optionally deletes the associated branch if it's been merged.
+
+## Parameters
+- `$ARGUMENTS` - Path to the worktree to remove
+  - Required
+  - Example: `../features/oauth`
+
+## Steps
+
+### 1. Verify worktree exists
 ```bash
-# Parse worktree path from arguments
-WORKTREE_PATH=$ARGUMENTS
-
-if [ -z "$WORKTREE_PATH" ]; then
-    echo "Usage: /git/worktrees/remove <worktree-path>"
-    echo ""
-    echo "Current worktrees:"
-    git worktree list
-    exit 1
-fi
-
-# Check if worktree exists
-if ! git worktree list | grep -q "$WORKTREE_PATH"; then
-    echo "Error: Worktree not found: $WORKTREE_PATH"
-    echo ""
-    echo "Available worktrees:"
-    git worktree list
-    exit 1
-fi
-
-# Get branch name for the worktree
-BRANCH=$(git worktree list --porcelain | grep -A2 "^worktree $WORKTREE_PATH" | grep "^branch" | cut -d' ' -f2 | sed 's|refs/heads/||')
-
-# Check for uncommitted changes
-echo "Checking worktree status..."
-cd "$WORKTREE_PATH" 2>/dev/null
-if [ $? -eq 0 ]; then
-    if [ -n "$(git status --porcelain)" ]; then
-        echo "⚠️  Warning: Worktree has uncommitted changes:"
-        git status --short
-        echo ""
-        echo "Options:"
-        echo "1. Commit changes first"
-        echo "2. Stash changes: git stash"
-        echo "3. Force remove (loses changes): git worktree remove --force $WORKTREE_PATH"
-        exit 1
-    fi
-    cd - > /dev/null
-fi
-
-# Check if branch is merged
-if [ -n "$BRANCH" ]; then
-    MERGED_TO_DEVELOP=$(git branch --merged develop | grep -c "$BRANCH" || echo 0)
-    MERGED_TO_MAIN=$(git branch --merged main | grep -c "$BRANCH" || echo 0)
-    
-    if [ $MERGED_TO_DEVELOP -eq 0 ] && [ $MERGED_TO_MAIN -eq 0 ]; then
-        echo "⚠️  Warning: Branch '$BRANCH' is not merged to develop or main"
-        echo "Continue anyway? (yes/no)"
-        read CONFIRM
-        if [ "$CONFIRM" != "yes" ]; then
-            echo "Removal cancelled"
-            exit 0
-        fi
-    fi
-fi
-
-# Remove worktree
-git worktree remove "$WORKTREE_PATH"
-
-if [ $? -eq 0 ]; then
-    echo "✓ Removed worktree: $WORKTREE_PATH"
-    
-    # Offer to delete branch if merged
-    if [ -n "$BRANCH" ]; then
-        if [ $MERGED_TO_DEVELOP -gt 0 ] || [ $MERGED_TO_MAIN -gt 0 ]; then
-            echo ""
-            echo "Delete merged branch '$BRANCH'? (yes/no)"
-            read DELETE_BRANCH
-            if [ "$DELETE_BRANCH" = "yes" ]; then
-                git branch -d "$BRANCH"
-                echo "✓ Deleted branch: $BRANCH"
-            fi
-        fi
-    fi
-else
-    echo "Error: Failed to remove worktree"
-    echo "Try: git worktree remove --force $WORKTREE_PATH"
-fi
-
-# Show remaining worktrees
-echo ""
-echo "Remaining worktrees:"
-git worktree list
+git worktree list | grep "$WORKTREE_PATH"
 ```
+Ensures the specified worktree is valid.
+
+### 2. Get associated branch
+Extracts branch name from worktree metadata.
+
+### 3. Check for uncommitted changes
+```bash
+cd "$WORKTREE_PATH" && git status --porcelain
+```
+Prevents accidental loss of work.
+
+### 4. Check if branch is merged
+Verifies if branch has been merged to develop or main.
+
+### 5. Remove worktree
+```bash
+git worktree remove "$WORKTREE_PATH"
+```
+Removes the worktree directory and metadata.
+
+### 6. Offer to delete merged branch
+If branch is merged, prompts to delete it.
+
+### 7. Show remaining worktrees
+Lists worktrees still active.
+
+## Validation
+- Worktree is successfully removed
+- No uncommitted changes are lost
+- Branch deletion is intentional
+- Remaining worktrees are listed
+
+## Error Handling
+- **"Worktree not found"** - Invalid path specified
+- **"has uncommitted changes"** - Save or stash changes first
+- **"branch is not merged"** - Warns before removing unmerged work
+- **"failed to remove"** - May need --force flag
+
+## Safety Notes
+- Always check for uncommitted changes
+- Verify branch merge status
+- Use --force only when certain
+- Worktree removal is permanent
+- Branch can be preserved even if worktree is removed
+
+## Examples
+- **Remove completed feature worktree**
+  ```
+  git-worktrees-remove ../features/oauth
+  ```
+  Removes worktree after feature completion
+
+- **Force remove with changes**
+  ```
+  git worktree remove --force ../experiments/test
+  ```
+  Removes worktree losing uncommitted changes
+
+- **Remove and delete branch**
+  ```
+  git-worktrees-remove ../features/old-feature
+  ```
+  Prompts to delete merged branch

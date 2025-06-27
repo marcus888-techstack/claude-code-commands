@@ -1,76 +1,93 @@
+# Git Worktrees Switch
+
+## Purpose
 Switch between Git worktrees quickly
 
+## Context
+Use to navigate between different worktrees with smart path resolution. Searches by name, branch, or path. Shows available worktrees when called without arguments. Opens a new shell in the target worktree to maintain context.
+
+## Parameters
+- `$ARGUMENTS` - Target worktree name, branch, or path
+  - Optional: shows list when omitted
+  - Example: `develop`, `feature/oauth`, `../features/payment`
+
+## Steps
+
+### 1. Show available worktrees
+If no target specified:
 ```bash
-# Parse worktree name/path from arguments
-TARGET=$ARGUMENTS
+git worktree list --porcelain
+```
+Displays formatted list with current worktree marked.
 
-if [ -z "$TARGET" ]; then
-    echo "=== Available Worktrees ==="
-    echo ""
-    
-    # List worktrees with current indicator
-    git worktree list --porcelain | awk '
-        /^worktree/ {path=$2; gsub(/.*\//, "", name, path)}
-        /^HEAD/ {head=substr($2, 1, 7)}
-        /^branch/ {branch=$2; gsub("refs/heads/", "", branch)}
-        /^$/ {
-            current = (path == ENVIRON["PWD"]) ? " *" : ""
-            printf "%-20s %-30s %s%s\n", name, branch ? branch : "(detached)", head, current
-            path=""; head=""; branch=""
-        }
-    ' | column -t
-    
-    echo ""
-    echo "Usage: /git:worktrees:switch <name>"
-    echo ""
-    echo "Examples:"
-    echo "  /git:worktrees:switch develop"
-    echo "  /git:worktrees:switch feature/oauth"
-    echo "  /git:worktrees:switch hotfix/security"
-    exit 0
-fi
+### 2. Find target worktree
+Searches in order:
+- Direct path match
+- Common locations (../features, ../hotfixes)
+- Branch name match
 
-# Find worktree path
-WORKTREE_PATH=""
+### 3. Verify worktree exists
+Confirms the found path is valid.
 
-# Check if it's a direct path
-if [ -d "$TARGET" ]; then
-    WORKTREE_PATH="$TARGET"
-else
-    # Search in common locations
-    for BASE in .. ../features ../hotfixes .; do
-        if [ -d "$BASE/$TARGET" ]; then
-            WORKTREE_PATH="$BASE/$TARGET"
-            break
-        fi
-    done
-    
-    # Search by branch name
-    if [ -z "$WORKTREE_PATH" ]; then
-        BRANCH_WORKTREE=$(git worktree list --porcelain | grep -B1 "branch.*$TARGET" | grep "^worktree" | cut -d' ' -f2)
-        if [ ! -z "$BRANCH_WORKTREE" ]; then
-            WORKTREE_PATH="$BRANCH_WORKTREE"
-        fi
-    fi
-fi
-
-if [ -z "$WORKTREE_PATH" ] || [ ! -d "$WORKTREE_PATH" ]; then
-    echo "Error: Worktree not found: $TARGET"
-    echo ""
-    echo "Available worktrees:"
-    git worktree list | awk '{print "  " $1}'
-    exit 1
-fi
-
-# Switch to worktree
+### 4. Change to worktree
+```bash
 cd "$WORKTREE_PATH"
-echo "✓ Switched to worktree: $(pwd)"
-echo "✓ Branch: $(git branch --show-current)"
+```
+Navigates to the worktree directory.
 
-# Show status
-echo ""
+### 5. Show worktree status
+```bash
 git status -sb
+```
+Displays branch and change summary.
 
-# Start new shell in worktree
+### 6. Start new shell
+```bash
 exec $SHELL
 ```
+Opens fresh shell in worktree context.
+
+## Validation
+- Target worktree is found
+- Path exists and is accessible
+- Git recognizes the worktree
+- Status is displayed correctly
+- New shell starts in worktree
+
+## Error Handling
+- **"Worktree not found"** - Invalid target specified
+- **No arguments** - Shows available worktrees
+- **Multiple matches** - Uses first found
+- **Permission denied** - Can't access worktree
+
+## Safety Notes
+- Read-only search operation
+- Preserves current shell context
+- New shell inherits environment
+- Exit new shell to return
+- No modifications to worktrees
+
+## Examples
+- **Switch to develop**
+  ```
+  git-worktrees-switch develop
+  ```
+  Quick switch to development branch
+
+- **Switch to feature**
+  ```
+  git-worktrees-switch feature/oauth
+  ```
+  Uses branch name to find worktree
+
+- **List available worktrees**
+  ```
+  git-worktrees-switch
+  ```
+  Shows all worktrees with current marked
+
+- **Switch by path**
+  ```
+  git-worktrees-switch ../hotfixes/security
+  ```
+  Direct path navigation
