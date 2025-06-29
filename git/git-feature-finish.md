@@ -1,10 +1,10 @@
 # Git Feature Finish
 
 ## Purpose
-Complete feature and merge to develop with automatic version tagging
+Complete feature development and create a pull request for review
 
 ## Context
-Use when a feature is complete and ready to be integrated into develop. This command merges the feature branch, creates a development version tag, and cleans up the branch. Follows git-flow conventions.
+Use when a feature is complete and ready for review. This command pushes the feature branch and creates a pull request to develop branch. Follows git-flow conventions with code review process.
 
 ## Parameters
 - `$ARGUMENTS` - Name of the feature to finish (without feature/ prefix)
@@ -16,75 +16,85 @@ Use when a feature is complete and ready to be integrated into develop. This com
 ### 1. Validate inputs
 Check that feature name is provided and the feature branch exists.
 
-### 2. Update develop branch
+### 2. Update feature branch
 ```bash
-git checkout develop
+git checkout feature/$FEATURE_NAME
 git pull origin develop
 ```
-Ensures develop has the latest changes before merging.
+Ensures feature branch has the latest changes from develop.
 
-### 3. Determine new version
-- Get current version from develop branch tags
-- Parse version components (major.minor.patch)
-- Increment patch version
-- Add _dev suffix for development version
-
-### 4. Merge feature branch
+### 3. Push feature branch
 ```bash
-git merge --no-ff feature/$FEATURE_NAME -m "Merge feature/$FEATURE_NAME into develop
-
-Feature: $FEATURE_NAME completed"
+git push origin feature/$FEATURE_NAME
 ```
-Uses --no-ff to preserve feature branch history.
+Pushes the feature branch to remote repository.
 
-### 5. Push changes and tag
+### 4. Create pull request
 ```bash
-git push origin develop
-git tag -a "v{MAJOR}.{MINOR}.{PATCH}_dev" -m "Feature merged: $FEATURE_NAME"
-git push origin "v{MAJOR}.{MINOR}.{PATCH}_dev"
-```
-Pushes the merge and creates a development version tag.
+gh pr create --base develop --head feature/$FEATURE_NAME \
+  --title "Feature: $FEATURE_NAME" \
+  --body "## Summary
+- Completes feature: $FEATURE_NAME
 
-### 6. Clean up branches
-```bash
-git branch -d feature/$FEATURE_NAME
-git push origin --delete feature/$FEATURE_NAME
-```
-Removes local and remote feature branches.
+## Changes
+- [Add description of changes]
 
-### 7. Remove worktree (if exists)
-```bash
-git worktree remove ../features/$FEATURE_NAME
+## Testing
+- [Add testing instructions]"
 ```
-Cleans up any associated worktree.
+Creates a pull request using GitHub CLI.
+
+### 5. Open pull request in browser
+```bash
+gh pr view --web
+```
+Opens the created pull request in the default web browser for review.
+
+### 6. Switch back to develop
+```bash
+git checkout develop
+```
+Returns to develop branch after creating PR.
+
+### 7. Note on cleanup
+Feature branch cleanup (deletion) should happen after PR is merged:
+- Use GitHub's "Delete branch" button after merge
+- Or run `git push origin --delete feature/$FEATURE_NAME` manually
+- Worktree removal: `git worktree remove ../features/$FEATURE_NAME`
 
 ## Validation
-- Feature branch is merged into develop
-- New development version tag is created
-- Feature branch is deleted locally and remotely
-- No merge conflicts remain
+- Feature branch is pushed to remote
+- Pull request is created successfully
+- PR link is displayed for review
+- Feature branch remains available for additional commits
 
 ## Error Handling
 - **"Branch 'feature/X' not found"** - Feature branch doesn't exist
-- **"No version tags found on develop"** - Uses v0.0.0 as starting version
-- **"Merge failed"** - Resolve conflicts manually, then retry
-- **"Cannot delete branch"** - Branch might not be fully merged
+- **"gh: command not found"** - Install GitHub CLI: `brew install gh`
+- **"Pull request already exists"** - Update existing PR with `gh pr view`
+- **"Authentication failed"** - Run `gh auth login` to authenticate
 
 ## Safety Notes
-- Always test feature thoroughly before finishing
+- Always test feature thoroughly before creating PR
 - Ensure CI/CD passes on feature branch
-- Communicate with team before merging large features
-- The --no-ff flag preserves feature history
+- Add reviewers to the PR after creation
+- Update PR description with detailed changes
+- Wait for approvals before merging
 
 ## Examples
 - **Finish a user authentication feature**
   ```
   git-feature-finish user-authentication
   ```
-  Merges feature/user-authentication to develop and tags it
+  Creates PR for feature/user-authentication to develop
 
 - **Finish a payment feature**
   ```
   git-feature-finish payment-integration
   ```
-  Completes the payment integration feature
+  Creates PR for the payment integration feature
+
+## Prerequisites
+- GitHub CLI installed (`gh`)
+- Authenticated with GitHub (`gh auth login`)
+- Repository has GitHub remote configured
